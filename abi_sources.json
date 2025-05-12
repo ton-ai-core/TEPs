@@ -1,0 +1,10 @@
+{
+  "sources": [
+    {
+      "type": "url",
+      "path": "https://raw.githubusercontent.com/tonkeeper/tongo/refs/heads/master/abi/schemas/nfts.xml",
+      "outputDir": "./generated/nfts"
+    }
+  ],
+  "defaultOutputDir": "./generated"
+} 
