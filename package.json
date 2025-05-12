@@ -1,6 +1,6 @@
 {
   "name": "@ton-ai-core/teps",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "TON Enhancement Proposals (TEPs) TypeScript library for working with TON blockchain contracts",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
