@@ -136,7 +136,7 @@ export function generateWrappersFromObject(
   }
   
   // Generate TEPs utility class
-  const tepsCode = tonAbi.generateTEPsClass(outputDir);
+  const tepsCode = tonAbi.generateTEPsClass('generated');
   const tepsPath = path.join('.', 'TEPs.ts');
   fs.writeFileSync(tepsPath, tepsCode);
   console.log(`TEPs utility class generated: ${tepsPath}`);

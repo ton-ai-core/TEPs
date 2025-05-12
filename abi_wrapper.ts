@@ -1200,81 +1200,55 @@ export class TonAbi {
       // Skip if no methods at all
       if (getMethods.length === 0 && messageMethods.length === 0) continue;
       
-      result += `  /**\n   * Check if a contract implements the ${className} standard\n   * @param blockchain Blockchain instance to use for queries\n   * @param address Address of the contract to check\n   * @returns Promise<boolean> True if the contract implements the standard\n   */\n`;
-      result += `  public static async ${methodName}(blockchain: Blockchain, address: Address): Promise<boolean> {\n`;
-      result += `    try {\n`;
-      result += `      // Try to dynamically import the ${className} class\n`;
-      result += `      const { ${className} } = await import('./${outputDir}/${iface}');\n`;
-      result += `      const instance = new ${className}(blockchain, address);\n`;
+      result += `  /**\n   * Check if a contract implements the ${className} standard\n   * @param blockchain Blockchain instance to use for queries\n   * @param address Address of the contract to check\n   * @throws Error if the contract doesn't implement the standard\n   */\n`;
+      result += `  public static async ${methodName}(blockchain: Blockchain, address: Address): Promise<void> {\n`;
+      result += `    // Import the ${className} class\n`;
+      result += `    const { ${className} } = await import('./${outputDir}/${iface}');\n`;
+      result += `    const instance = new ${className}(blockchain, address);\n`;
       
       // Test all get methods for this interface
       if (getMethods.length > 0) {
-        result += `      \n      // Test all required get-methods for this interface\n`;
+        result += `    \n    // Test all required get-methods for this interface\n`;
         for (const testMethod of getMethods) {
           // For methods that need parameters, provide default test values
           const method = this.findGetMethod(testMethod);
           if (method && method.inputs.length > 0) {
-            result += `      await instance.test${this.capitalizeFirstLetter(testMethod)}(${this.generateDefaultTestValues(method.inputs)});\n`;
+            result += `    await instance.test${this.capitalizeFirstLetter(testMethod)}(${this.generateDefaultTestValues(method.inputs)});\n`;
           } else {
-            result += `      await instance.test${this.capitalizeFirstLetter(testMethod)}();\n`;
+            result += `    await instance.test${this.capitalizeFirstLetter(testMethod)}();\n`;
           }
         }
       }
       
-      // Add testing for send methods
+      // Add testing for send methods - without try-catch
       if (messageMethods.length > 0) {
-        result += `      \n      // Test all required send-methods for this interface\n`;
-        result += `      try {\n`;
+        result += `    \n    // Test all required send-methods for this interface\n`;
+        
+        // Если есть параметры типа Address, сначала создадим тестовый адрес
+        const hasAddressParams = messageMethods.some(
+          msg => msg.params && msg.params.some(p => p.getTsType() === 'Address')
+        );
+        
+        if (hasAddressParams) {
+          result += `    // Create a valid test address for TON\n`;
+          result += `    const testAddress = Address.parse("EQA-qlZ1_NLqTbVP8fFcxpYxBvX8uKvwzEXCw_AYXbTJV5vN");\n`;
+        }
+        
         for (const message of messageMethods) {
           const methodName = `send${this.capitalizeFirstLetter(message.name)}`;
           const testMethodName = `test${methodName}`;
           
           if (message.params && message.params.length > 0) {
             // For methods that need parameters, provide default test values
-            result += `        // Test send method: ${methodName}\n`;
-            result += `        try {\n`;
-            result += `          await instance.${testMethodName}(${this.generateDefaultTestValuesForMessage(message.params)});\n`;
-            result += `        } catch (sendError: any) {\n`;
-            result += `          console.log(\`Note: Send method ${methodName} test failed, but this is expected during standard detection: \${sendError?.message || 'Unknown error'}\`);\n`;
-            result += `          // Continue with next test - send method failures are expected during detection\n`;
-            result += `        }\n`;
+            result += `    // This call may fail, which is expected during standard detection\n`;
+            result += `    await instance.${testMethodName}(${this.generateDefaultTestValuesForMessage(message.params)});\n`;
           } else {
-            result += `        // Test send method: ${methodName}\n`;
-            result += `        try {\n`;
-            result += `          await instance.${testMethodName}();\n`;
-            result += `        } catch (sendError: any) {\n`;
-            result += `          console.log(\`Note: Send method ${methodName} test failed, but this is expected during standard detection: \${sendError?.message || 'Unknown error'}\`);\n`;
-            result += `          // Continue with next test - send method failures are expected during detection\n`;
-            result += `        }\n`;
+            result += `    // This call may fail, which is expected during standard detection\n`;
+            result += `    await instance.${testMethodName}();\n`;
           }
         }
-        result += `      } catch (error) {\n`;
-        result += `        // If there's an error with send methods, log but continue\n`;
-        result += `        console.log('Note: Some send method tests failed but get-methods passed, standard detection continues');\n`;
-        result += `      }\n`;
       }
       
-      result += `      return true;\n`;
-      result += `    } catch (error) {\n`;
-      result += `      // If there's an error, the contract doesn't implement this standard\n`;
-      result += `      return false;\n`;
-      result += `    }\n`;
-      result += `  }\n\n`;
-      
-      // Create a factory method for this interface
-      result += `  /**\n   * Create ${className} wrapper if supported\n   * @param blockchain Blockchain instance to use for queries\n   * @param address Address of the contract to check\n   * @returns Promise with the ${className} wrapper or null if not supported\n   */\n`;
-      result += `  public static async Create${className}(blockchain: Blockchain, address: Address) {\n`;
-      result += `    try {\n`;
-      result += `      // Check if the contract implements the standard\n`;
-      result += `      const isSupported = await this.${methodName}(blockchain, address);\n`;
-      result += `      if (!isSupported) return null;\n`;
-      result += `      \n`;
-      result += `      // Create and return the wrapper\n`;
-      result += `      const { ${className} } = await import('./${outputDir}/${iface}');\n`;
-      result += `      return new ${className}(blockchain, address);\n`;
-      result += `    } catch (error) {\n`;
-      result += `      return null;\n`;
-      result += `    }\n`;
       result += `  }\n\n`;
       
       // Record that we've generated methods for this interface
@@ -1283,121 +1257,19 @@ export class TonAbi {
     
     // Special handling for NftItemSimple which might not have its own get methods but inherits from NftItem
     if (!generatedMethods.has('NftItemSimple') && interfaces.includes('nft_item_simple')) {
-      result += `  /**\n   * Check if a contract implements the NftItemSimple standard\n   * @param blockchain Blockchain instance to use for queries\n   * @param address Address of the contract to check\n   * @returns Promise<boolean> True if the contract implements the standard\n   */\n`;
-      result += `  public static async IsNftItemSimpleStandard(blockchain: Blockchain, address: Address): Promise<boolean> {\n`;
-      result += `    try {\n`;
-      result += `      // Try to dynamically import the NftItemSimple class\n`;
-      result += `      const { NftItemSimple } = await import('./${outputDir}/nft_item_simple');\n`;
-      result += `      const instance = new NftItemSimple(blockchain, address);\n`;
-      result += `      \n`;
-      result += `      // Test all required methods for this interface\n`;
-      result += `      await instance.testGet_nft_data();\n`;
-      result += `      return true;\n`;
-      result += `    } catch (error) {\n`;
-      result += `      // If there's an error, the contract doesn't implement this standard\n`;
-      result += `      return false;\n`;
-      result += `    }\n`;
-      result += `  }\n\n`;
-      
-      result += `  /**\n   * Create NftItemSimple wrapper if supported\n   * @param blockchain Blockchain instance to use for queries\n   * @param address Address of the contract to check\n   * @returns Promise with the NftItemSimple wrapper or null if not supported\n   */\n`;
-      result += `  public static async CreateNftItemSimple(blockchain: Blockchain, address: Address) {\n`;
-      result += `    try {\n`;
-      result += `      // Check if the contract implements the standard\n`;
-      result += `      const isSupported = await this.IsNftItemSimpleStandard(blockchain, address);\n`;
-      result += `      if (!isSupported) return null;\n`;
-      result += `      \n`;
-      result += `      // Create and return the wrapper\n`;
-      result += `      const { NftItemSimple } = await import('./${outputDir}/nft_item_simple');\n`;
-      result += `      return new NftItemSimple(blockchain, address);\n`;
-      result += `    } catch (error) {\n`;
-      result += `      return null;\n`;
-      result += `    }\n`;
+      result += `  /**\n   * Check if a contract implements the NftItemSimple standard\n   * @param blockchain Blockchain instance to use for queries\n   * @param address Address of the contract to check\n   * @throws Error if the contract doesn't implement the standard\n   */\n`;
+      result += `  public static async IsNftItemSimpleStandard(blockchain: Blockchain, address: Address): Promise<void> {\n`;
+      result += `    // Import the NftItemSimple class\n`;
+      result += `    const { NftItemSimple } = await import('./${outputDir}/nft_item_simple');\n`;
+      result += `    const instance = new NftItemSimple(blockchain, address);\n`;
+      result += `    \n`;
+      result += `    // Test all required methods for this interface\n`;
+      result += `    await instance.testGet_nft_data();\n`;
       result += `  }\n\n`;
       
       // Record that we've generated methods for this interface
       generatedMethods.add('NftItemSimple');
     }
-    
-    // Create from address - automatically detect and create the right wrapper
-    result += `  /**\n   * Create an instance of a standard object if supported\n   * @param blockchain Blockchain instance to use for queries\n   * @param address Address of the contract to check\n   * @returns Promise with the appropriate standard instance, or null if not supported\n   */\n`;
-    result += `  public static async createFromAddress(blockchain: Blockchain, address: Address) {\n`;
-    
-    // Build a dependency graph and order interfaces to respect inheritance
-    // First, create a map of interface to its dependencies (interfaces it inherits from)
-    const dependencyMap = new Map<string, string[]>();
-    
-    for (const iface of interfaces) {
-      const ifaceObj = this.findInterface(iface);
-      if (!ifaceObj) continue;
-      
-      // If this interface inherits from another, add it as a dependency
-      const dependencies: string[] = [];
-      if (ifaceObj.inherits) {
-        dependencies.push(ifaceObj.inherits);
-      }
-      
-      dependencyMap.set(iface, dependencies);
-    }
-    
-    // Topological sort to order interfaces by dependencies
-    const visited = new Set<string>();
-    const tempVisited = new Set<string>();
-    const orderedInterfaces: string[] = [];
-    
-    // DFS traversal function for topological sort
-    const visit = (iface: string) => {
-      if (tempVisited.has(iface)) {
-        // Cyclic dependency found, but we'll ignore it and continue
-        return;
-      }
-      
-      if (visited.has(iface)) {
-        return;
-      }
-      
-      tempVisited.add(iface);
-      
-      const dependencies = dependencyMap.get(iface) || [];
-      for (const dependency of dependencies) {
-        visit(dependency);
-      }
-      
-      tempVisited.delete(iface);
-      visited.add(iface);
-      orderedInterfaces.push(iface);
-    };
-    
-    // Visit all interfaces to build the ordered list
-    for (const iface of interfaces) {
-      if (!visited.has(iface)) {
-        visit(iface);
-      }
-    }
-    
-    // Reverse the order to get items with most dependencies first
-    // Most specific interfaces (like SBT) should be checked before their parents (like NFT Item)
-    orderedInterfaces.reverse();
-    
-    // Now check each interface in the topologically sorted order
-    result += `    // Try to identify the standard and create the appropriate instance\n`;
-    for (const iface of orderedInterfaces) {
-      const className = this.normalizeInterfaceName(iface);
-      
-      // Skip interfaces we don't have methods for
-      if (!generatedMethods.has(className)) continue;
-      
-      result += `    // Check if it's a ${className}\n`;
-      
-      // Use safe variable name for the instance (original interface name)
-      const instanceVarName = iface.replace(/-/g, '_');
-      result += `    const ${instanceVarName}Instance = await this.Create${className}(blockchain, address);\n`;
-      result += `    if (${instanceVarName}Instance) return ${instanceVarName}Instance;\n`;
-      result += `    \n`;
-    }
-    
-    result += `    // No matching standard found\n`;
-    result += `    return null;\n`;
-    result += `  }\n`;
     
     // Close class
     result += `}\n`;
@@ -1461,7 +1333,7 @@ export class TonAbi {
           values.push('""');
           break;
         case 'Address':
-          values.push('Address.parse("EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c")'); // Use a zero address
+          values.push('testAddress'); // Используем переменную вместо хардкода
           break;
         case 'Cell':
           values.push('beginCell().endCell()');

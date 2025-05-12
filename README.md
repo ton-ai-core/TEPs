@@ -23,33 +23,32 @@ async function example() {
   const address = Address.parse('EQBInPs62kcCSGDwnCTx0FLzgNpu_t6sTca-mOXInYPBISzT');
   
   // Check what standards are implemented
-  const isNft = await TEPs.IsNftItemStandard(blockchain, address);
-  const isCollection = await TEPs.IsNftCollectionStandard(blockchain, address);
-  const isSbt = await TEPs.IsSbtStandard(blockchain, address);
-  
-  console.log(`Is NFT: ${isNft}`);
-  console.log(`Is Collection: ${isCollection}`);
-  console.log(`Is SBT: ${isSbt}`);
-  
-  // Automatically create the right type of wrapper
-  const wrapper = await TEPs.createFromAddress(blockchain, address);
-  
-  if (wrapper) {
-    console.log(`Created wrapper of type: ${wrapper.constructor.name}`);
-    
-    // Now you can use the wrapper methods based on its type
-    if (await TEPs.IsNftItemStandard(blockchain, address)) {
-      // Access NFT item data
-      const data = await wrapper.get_nft_data();
-      console.log('NFT Data:', data);
-    }
-    
-    if (await TEPs.IsNftCollectionStandard(blockchain, address)) {
-      // Access NFT collection data
-      const collectionData = await wrapper.get_collection_data();
-      console.log('Collection Data:', collectionData);
-    }
+  try {
+    await TEPs.IsNftItemStandard(blockchain, address);
+    console.log('Contract implements NFT Item standard');
+  } catch (error) {
+    console.log('Contract does not implement NFT Item standard:', error.message);
   }
+  
+  try {
+    await TEPs.IsNftCollectionStandard(blockchain, address);
+    console.log('Contract implements NFT Collection standard');
+  } catch (error) {
+    console.log('Contract does not implement NFT Collection standard:', error.message);
+  }
+  
+  try {
+    await TEPs.IsSbtStandard(blockchain, address);
+    console.log('Contract implements SBT standard');
+  } catch (error) {
+    console.log('Contract does not implement SBT standard:', error.message);
+  }
+  
+  // Using in test suites
+  test('Contract implements NFT Item standard', async () => {
+    // This will throw an error if the standard is not implemented
+    await TEPs.IsNftItemStandard(blockchain, contractAddress);
+  });
 }
 ```
 
@@ -66,7 +65,7 @@ async function example() {
 - Automatic detection of contract standards
 - Type-safe wrapper generation
 - Support for all standard methods
-- Simple interface to interact with different contract types
+- Throws exceptions when standards are not implemented
 
 ## Development
 
