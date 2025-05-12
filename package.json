@@ -1,13 +1,31 @@
 {
-  "name": "ton-abi-parser",
+  "name": "@ton-ai-core/teps",
   "version": "1.0.0",
-  "description": "Parser for TON ABI schemas",
-  "main": "abi_parser.js",
+  "description": "TON Enhancement Proposals (TEPs) TypeScript library for working with TON blockchain contracts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "generated"
+  ],
   "scripts": {
-    "start": "ts-node abi_parser.ts",
     "build": "tsc",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "generate": "npm run build && rm -rf generated && ts-node generate_wrappers.ts"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ton-ai-core/TEPs.git"
+  },
+  "keywords": [
+    "ton",
+    "blockchain",
+    "tep",
+    "standard",
+    "nft",
+    "sbt"
+  ],
+  "author": "ton-ai-core",
+  "license": "MIT",
   "dependencies": {
     "@jest/globals": "^29.7.0",
     "@ton/core": "^0.52.2",

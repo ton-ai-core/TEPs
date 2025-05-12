@@ -2,36 +2,18 @@
 
 A TypeScript library for working with TON blockchain contracts that implement standard interfaces defined in TON Enhancement Proposals (TEPs).
 
-## Features
-
-- Automatically generates TypeScript interfaces and wrapper classes from XML ABI definitions
-- Provides methods to detect if contracts implement specific standards (NFT Collection, NFT Item, SBT, etc.)
-- Creates appropriate wrapper instances for each standard
-- Handles inheritance relationships between standards
-- Tests all available methods when checking contract compatibility
-
 ## Installation
 
 ```bash
-npm install
+npm install @ton-ai-core/teps
 ```
 
 ## Usage
 
-### Generate Wrappers
-
-```bash
-npx ts-node generate_wrappers.ts
-```
-
-This will create TypeScript wrapper classes in the `generated` directory based on the XML ABI definitions.
-
-### Using the TEPs Class
-
 ```typescript
 import { Address } from '@ton/core';
 import { Blockchain } from '@ton/sandbox';
-import { TEPs } from './TEPs';
+import { TEPs } from '@ton-ai-core/teps';
 
 async function example() {
   // Create a blockchain instance
@@ -55,18 +37,49 @@ async function example() {
   if (wrapper) {
     console.log(`Created wrapper of type: ${wrapper.constructor.name}`);
     
-    // Now you can use the wrapper methods based on the wrapper type
+    // Now you can use the wrapper methods based on its type
     if (await TEPs.IsNftItemStandard(blockchain, address)) {
-      const { NftItem } = await import('./generated/nft_item');
-      
-      // Check if the wrapper is an NftItem instance
-      if (wrapper instanceof NftItem) {
-        const data = await wrapper.get_nft_data();
-        console.log('NFT Data:', data);
-      }
+      // Access NFT item data
+      const data = await wrapper.get_nft_data();
+      console.log('NFT Data:', data);
+    }
+    
+    if (await TEPs.IsNftCollectionStandard(blockchain, address)) {
+      // Access NFT collection data
+      const collectionData = await wrapper.get_collection_data();
+      console.log('Collection Data:', collectionData);
     }
   }
 }
+```
+
+## Supported Standards
+
+- NFT Collection (TEP-62)
+- NFT Item (TEP-62)
+- SBT (TEP-62)
+- Editable
+- NFT Item Simple
+
+## Core Features
+
+- Automatic detection of contract standards
+- Type-safe wrapper generation
+- Support for all standard methods
+- Simple interface to interact with different contract types
+
+## Development
+
+To build the library:
+
+```bash
+npm run build
+```
+
+To regenerate wrappers from ABI definitions:
+
+```bash
+npm run generate
 ```
 
 ## License

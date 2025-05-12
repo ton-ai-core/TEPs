@@ -7,10 +7,14 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "moduleResolution": "node"
+    "moduleResolution": "node",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true
   },
   "include": [
-    "./*.ts"
+    "./*.ts",
+    "./generated/*.ts"
   ],
   "exclude": [
     "node_modules"
