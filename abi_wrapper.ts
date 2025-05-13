@@ -533,7 +533,7 @@ export class AbiInternalMessage extends AbiEntity {
       case 'uint32':
         return `    .storeUint(${param.name}, 32) // ${param.name}: uint32\n`;
       case 'Bool':
-        return `    .storeBool(${param.name}) // ${param.name}: Bool\n`;
+        return `    .storeBit(${param.name}) // ${param.name}: Bool\n`;
       case 'MsgAddress':
         return `    .storeAddress(${param.name}) // ${param.name}: MsgAddress\n`;
       case '^Cell':
@@ -771,10 +771,12 @@ export class TonAbi {
       }
     } else if (method.outputs.length > 1) {
       returnType = '{' + method.outputs.map(o => {
+        // Обработка имени поля для типа - сохраняем символ ? для опциональных полей в типе
+        const fieldName = o.name;
         if (o.type === 'msgaddress') {
-          return `${o.name}: Address | null`;
+          return `${fieldName}: Address | null`;
         } else {
-          return `${o.name}: ${o.getTsType()}`;
+          return `${fieldName}: ${o.getTsType()}`;
         }
       }).join(', ') + '}';
     }
@@ -868,24 +870,27 @@ export class TonAbi {
       result += `  // Read multiple values from stack\n`;
       result += `  return {\n`;
       for (const output of method.outputs) {
+        // Очищаем имя поля от недопустимых символов для JavaScript
+        const safeFieldName = output.name.replace(/[^a-zA-Z0-9_$]/g, '');
+        
         if (output.type === 'msgaddress') {
-          result += `    ${output.name}: reader.readAddressOpt(),\n`;
+          result += `    ${safeFieldName}: reader.readAddressOpt(),\n`;
         } else {
           switch (output.getTsType()) {
             case 'bigint':
-              result += `    ${output.name}: reader.readBigNumber(),\n`;
+              result += `    ${safeFieldName}: reader.readBigNumber(),\n`;
               break;
             case 'boolean':
-              result += `    ${output.name}: reader.readBoolean(),\n`;
+              result += `    ${safeFieldName}: reader.readBoolean(),\n`;
               break;
             case 'string':
-              result += `    ${output.name}: reader.readString(),\n`;
+              result += `    ${safeFieldName}: reader.readString(),\n`;
               break;
             default:
               if (output.type && output.type.includes('Cell')) {
-                result += `    ${output.name}: reader.readCell(),\n`;
+                result += `    ${safeFieldName}: reader.readCell(),\n`;
               } else {
-                result += `    ${output.name}: reader.readCell(),\n`;
+                result += `    ${safeFieldName}: reader.readCell(),\n`;
               }
           }
         }
@@ -987,29 +992,32 @@ export class TonAbi {
       
       // Check each field
       for (const output of method.outputs) {
+        // Очищаем имя поля от недопустимых символов для JavaScript
+        const safeFieldName = output.name.replace(/[^a-zA-Z0-9_$]/g, '');
+        
         // Special handling for addresses
         if (output.type === 'msgaddress') {
-          result += `    // Check field ${output.name}\n`;
-          result += `    if (result.${output.name} !== null) {\n`;
-          result += `      expect(result.${output.name}).toBeInstanceOf(Address);\n`;
+          result += `    // Check field ${safeFieldName}\n`;
+          result += `    if (result.${safeFieldName} !== null) {\n`;
+          result += `      expect(result.${safeFieldName}).toBeInstanceOf(Address);\n`;
           result += `      \n`;
           result += `      // Check address format\n`;
-          result += `      const addrStr = result.${output.name}.toString();\n`;
+          result += `      const addrStr = result.${safeFieldName}.toString();\n`;
           result += `      expect(addrStr.startsWith('EQ') || addrStr.startsWith('UQ')).toBeTruthy();\n`;
           result += `    }\n`;
         } else {
           const expectedType = this.getExpectedTypeForTest(output.getTsType());
-          result += `    // Check field ${output.name}\n`;
+          result += `    // Check field ${safeFieldName}\n`;
           
           if (expectedType === 'bigint') {
-            result += `    expect(typeof result.${output.name}).toBe('bigint');\n`;
+            result += `    expect(typeof result.${safeFieldName}).toBe('bigint');\n`;
           } else if (expectedType === 'boolean') {
-            result += `    expect(typeof result.${output.name}).toBe('boolean');\n`;
+            result += `    expect(typeof result.${safeFieldName}).toBe('boolean');\n`;
           } else if (expectedType === 'string') {
-            result += `    expect(typeof result.${output.name}).toBe('string');\n`;
+            result += `    expect(typeof result.${safeFieldName}).toBe('string');\n`;
           } else {
             result += `    // Type '${expectedType}' - check field exists\n`;
-            result += `    expect(result.${output.name}).toBeDefined();\n`;
+            result += `    expect(result.${safeFieldName}).toBeDefined();\n`;
           }
         }
       }
@@ -1132,7 +1140,7 @@ export class TonAbi {
           result += `    .storeUint(${param.name}, 32) // ${param.name}: uint32\n`;
           break;
         case 'Bool':
-          result += `    .storeBool(${param.name}) // ${param.name}: Bool\n`;
+          result += `    .storeBit(${param.name}) // ${param.name}: Bool\n`;
           break;
         case 'MsgAddress':
           // Ensure address is passed correctly

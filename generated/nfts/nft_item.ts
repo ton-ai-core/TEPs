@@ -14,7 +14,7 @@ export class NftItem implements INftItem {
     this.address = address;
   }
 
-  async get_nft_data(): Promise<{init: boolean, index: bigint, collection_address: Address | null, owner_address: Address | null, individual_content: any}> {
+  async get_nft_data(): Promise<{init?: any, index: bigint, collection_address: any, owner_address: any, individual_content: Cell}> {
   try {
   // Call get-method via Blockchain from @ton/sandbox
   const result = await this.blockchain.runGetMethod(
@@ -27,10 +27,10 @@ export class NftItem implements INftItem {
   const reader = new TupleReader(result.stack);
   // Read multiple values from stack
   return {
-    init: reader.readBoolean(),
+    init: reader.readCell(),
     index: reader.readBigNumber(),
-    collection_address: reader.readAddressOpt(),
-    owner_address: reader.readAddressOpt(),
+    collection_address: reader.readCell(),
+    owner_address: reader.readCell(),
     individual_content: reader.readCell(),
   };
   } catch (error) {
@@ -58,7 +58,7 @@ export class NftItem implements INftItem {
   }
 }
 
-  async sendNft_transfer(query_id: bigint, new_owner: Address, response_destination: Address, custom_payload: Cell | null, forward_amount: bigint, forward_payload: Cell): Promise<SendMessageResult> {
+  async sendTransfer(query_id: bigint, new_owner: Address, response_destination: Address, custom_payload: Cell | null, forward_amount: bigint, forward_payload: Cell): Promise<SendMessageResult> {
   // Create external message
   const message = beginCell()
     .storeUint(0x5fcc3d14, 32) // op
@@ -67,7 +67,7 @@ export class NftItem implements INftItem {
     .storeAddress(typeof response_destination === 'string' ? Address.parse(response_destination) : response_destination) // response_destination: MsgAddress
     .storeMaybeRef(custom_payload) // custom_payload: (Maybe ^Cell)
     .storeVarUint(forward_amount, 16) // forward_amount: (VarUInteger 16)
-    .storeRef(forward_payload) // forward_payload: (Either NFTPayload ^NFTPayload)
+    .storeRef(forward_payload) // forward_payload: (Either Cell ^Cell)
     .endCell();
 
   // Send external message via blockchain
@@ -95,37 +95,28 @@ export class NftItem implements INftItem {
     expect(typeof result).toBe('object');
     expect(result).not.toBeNull();
     // Check field init
-    expect(typeof result.init).toBe('boolean');
+    // Type 'any' - check field exists
+    expect(result.init).toBeDefined();
     // Check field index
     expect(typeof result.index).toBe('bigint');
     // Check field collection_address
-    if (result.collection_address !== null) {
-      expect(result.collection_address).toBeInstanceOf(Address);
-      
-      // Check address format
-      const addrStr = result.collection_address.toString();
-      expect(addrStr.startsWith('EQ') || addrStr.startsWith('UQ')).toBeTruthy();
-    }
-    // Check field owner_address
-    if (result.owner_address !== null) {
-      expect(result.owner_address).toBeInstanceOf(Address);
-      
-      // Check address format
-      const addrStr = result.owner_address.toString();
-      expect(addrStr.startsWith('EQ') || addrStr.startsWith('UQ')).toBeTruthy();
-    }
-    // Check field individual_content
     // Type 'any' - check field exists
+    expect(result.collection_address).toBeDefined();
+    // Check field owner_address
+    // Type 'any' - check field exists
+    expect(result.owner_address).toBeDefined();
+    // Check field individual_content
+    // Type 'Cell' - check field exists
     expect(result.individual_content).toBeDefined();
   }
 
   /**
-   * Test method for sendNft_transfer
+   * Test method for sendTransfer
    */
-  async testsendNft_transfer(query_id: bigint, new_owner: Address, response_destination: Address, custom_payload: Cell | null, forward_amount: bigint, forward_payload: Cell): Promise<void> {
+  async testsendTransfer(query_id: bigint, new_owner: Address, response_destination: Address, custom_payload: Cell | null, forward_amount: bigint, forward_payload: Cell): Promise<void> {
     try {
       // Call the send method and check result
-      const result = await this.sendNft_transfer(query_id, new_owner, response_destination, custom_payload, forward_amount, forward_payload);
+      const result = await this.sendTransfer(query_id, new_owner, response_destination, custom_payload, forward_amount, forward_payload);
       // Verify the basic structure of the result
       expect(result).toBeDefined();
       // Check if transactions are present in the result
@@ -134,7 +125,7 @@ export class NftItem implements INftItem {
     } catch (error) {
       // If test fails, provide helpful error message
       const errorMessage = (error as { message?: string }).message || 'Unknown error';
-      throw new Error(`Error testing sendNft_transfer: ${errorMessage}`);
+      throw new Error(`Error testing sendTransfer: ${errorMessage}`);
     }
   }
 

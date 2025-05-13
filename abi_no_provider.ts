@@ -12,7 +12,6 @@ import {
   TupleBuilder
 } from '@ton/core';
 import { Blockchain } from '@ton/sandbox';
-import { TEPs } from './TEPs';
 
 /**
  * Generates code for TypeScript interfaces of data types
@@ -435,56 +434,4 @@ function generateTupleWriteCode(param: { name: string, type: string }): string {
 
 function capitalize(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1);
-}
-
-/**
- * Example of using the TEPs class without a provider
- */
-export async function exampleUsingTEPs() {
-  // Create a blockchain instance
-  const blockchain = await Blockchain.create();
-  
-  // Example address - replace with an actual address
-  const address = Address.parse('EQBInPs62kcCSGDwnCTx0FLzgNpu_t6sTca-mOXInYPBISzT');
-  
-  // Check what standards are implemented
-  try {
-    await TEPs.IsNftItemStandard(blockchain, address);
-    console.log('Contract implements NFT Item standard');
-
-    // Import classes directly if we need to work with them
-    const { NftItem } = await import('./generated/nft_item');
-    const nftItem = new NftItem(blockchain, address);
-    
-    // Now we can use the wrapper methods
-    const data = await nftItem.get_nft_data();
-    console.log('NFT Data:', data);
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.log('Contract does not implement NFT Item standard:', errorMessage);
-  }
-  
-  try {
-    await TEPs.IsNftCollectionStandard(blockchain, address);
-    console.log('Contract implements NFT Collection standard');
-    
-    // Import classes directly if we need to work with them
-    const { NftCollection } = await import('./generated/nft_collection');
-    const nftCollection = new NftCollection(blockchain, address);
-    
-    // Now we can use the wrapper methods
-    const collectionData = await nftCollection.get_collection_data();
-    console.log('Collection Data:', collectionData);
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.log('Contract does not implement NFT Collection standard:', errorMessage);
-  }
-  
-  try {
-    await TEPs.IsSbtStandard(blockchain, address);
-    console.log('Contract implements SBT standard');
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.log('Contract does not implement SBT standard:', errorMessage);
-  }
 }

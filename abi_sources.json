@@ -2,7 +2,7 @@
   "sources": [
     {
       "type": "url",
-      "path": "https://raw.githubusercontent.com/tonkeeper/tongo/refs/heads/master/abi/schemas/nfts.xml",
+      "path": "https://raw.githubusercontent.com/ton-ai-core/TEPs/refs/heads/main/TEPs/nft.xml",
       "outputDir": "./generated/nfts"
     }
   ],
